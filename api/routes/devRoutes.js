@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Developer = require('../models/developers');
+const { generateToken } = require('../utils/token');
+const { authenticateToken } = require('../middleware/authMiddleware');
 
 // Register a new developer
 router.post('/register', async (req, res) => {
@@ -23,25 +25,17 @@ router.post('/register', async (req, res) => {
 
 // Login a developer
 router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
   try {
-    const { email, password } = req.body;
-    console.log(email, password);
     const developer = await Developer.findOne({ email });
-    console.log('Plain Password:', password);
-    console.log('Hashed Password:', developer.password);
-
-    if (!developer) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
+    if (!developer || !developer.verifyPassword(password)) {
+      return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const isMatch = await developer.verifyPassword(password);
-    if (!isMatch) {
-      return res.status(400).json({ msg: 'Invalid credentials' });
-    }
-
-    res.json({ msg: 'Login successful', developer });
-  } catch (err) {
-    res.status(500).send(`Server error : ${err.message}`);
+    const token = generateToken(developer._id, 'developer');
+    res.json({ developer, token });
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -70,6 +64,23 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ msg: 'Developer not found' });
     }
     res.status(500).send('Server error');
+  }
+});
+
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.type !== 'developer') {
+      return res.status(403).json({ error: 'Access forbidden' });
+    }
+
+    const developer = await Developer.findById(req.user.id);
+    if (!developer) {
+      return res.status(404).json({ error: 'Developer not found' });
+    }
+
+    res.json(developer);
+  } catch (error) {
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
