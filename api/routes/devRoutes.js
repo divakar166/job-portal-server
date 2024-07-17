@@ -33,7 +33,7 @@ router.post('/login', async (req, res) => {
     }
 
     const token = generateToken(developer._id, 'developer');
-    res.json({ developer, token });
+    res.json({ token });
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
@@ -67,7 +67,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.get('/profile', authenticateToken, async (req, res) => {
+router.post('/profile', authenticateToken, async (req, res) => {
   try {
     if (req.user.type !== 'developer') {
       return res.status(403).json({ error: 'Access forbidden' });
