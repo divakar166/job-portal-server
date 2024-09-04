@@ -28,19 +28,18 @@ router.post('/register', async (req, res) => {
       verificationToken,
     });
 
-    // const { data, error } = await resend.emails.send({
-    //   to: developer.email,
-    //   from: 'info@divakarsingh.online',
-    //   subject: 'Connect - Account Verification',
-    //   html: `<p>Please verify your account by clicking on the following link:</p>
-    //           <a href="${verificationUrl}">Verify Account</a>`,
-    // });
+    const { data, error } = await resend.emails.send({
+      to: developer.email,
+      from: 'info@divakarsingh.online',
+      subject: 'Connect - Account Verification',
+      html: `<p>Please verify your account by clicking on the following link:</p>
+              <a href="${verificationUrl}">Verify Account</a>`,
+    });
 
-    // if (error) {
-    //   return res.status(400).json({ error });
-    // }
-    console.log(verificationUrl)
-
+    if (error) {
+      return res.status(400).json({ error });
+    }
+    
     await developer.save();
 
     res.status(201).json({ msg: 'Developer registered successfully. Please verify your email.' });
