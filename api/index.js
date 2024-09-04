@@ -3,9 +3,6 @@ const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./config/database');
-const { Resend } = require('resend');
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 dotenv.config();
 
