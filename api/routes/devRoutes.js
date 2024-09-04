@@ -3,25 +3,73 @@ const router = express.Router();
 const Developer = require('../models/developers');
 const { generateToken } = require('../utils/token');
 const { authenticateToken } = require('../middleware/authMiddleware');
+const crypto = require('crypto');
+const { Resend } = require('resend');
 
-// Register a new developer
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, mobile, designation } = req.body;
+    const { firstName, lastName, email, password} = req.body;
     let developer = await Developer.findOne({ email });
 
     if (developer) {
       return res.status(400).json({ msg: 'Developer already exists' });
     }
+    let name = firstName + ' ' + lastName;
 
-    developer = new Developer({ name, email, password, mobile, designation });
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    const verificationUrl = `${process.env.FRONTEND_URL}/auth/developer/verify/${verificationToken}`;
+
+    developer = new Developer({
+      name,
+      email,
+      password,
+      verificationToken,
+    });
+
+    const { data, error } = await resend.emails.send({
+      to: developer.email,
+      from: 'info@divakarsingh.online',
+      subject: 'Account Verification',
+      html: `<p>Please verify your account by clicking on the following link:</p>
+              <a href="${verificationUrl}">Verify Account</a>`,
+    });
+
+    if (error) {
+      return res.status(400).json({ error });
+    }
+
     await developer.save();
 
-    res.status(201).json({ msg: 'Developer registered successfully' });
+    res.status(201).json({ msg: 'Developer registered successfully. Please verify your email.' });
   } catch (err) {
+    console.log(err)
     res.status(500).send('Server error');
   }
 });
+
+router.get('/verify/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    console.log(token)
+    let developer = await Developer.findOne({ verificationToken: token });
+
+    if (!developer) {
+      return res.status(400).json({ msg: 'Invalid or expired token' });
+    }
+
+    developer.isVerified = true;
+    developer.verificationToken = undefined;
+    await developer.save();
+
+    res.status(200).json({ msg: 'Account verified successfully' });
+  } catch (err) {
+    res.status(500).json({msg: 'Server error'});
+  }
+});
+
+
 
 // Login a developer
 router.post('/login', async (req, res) => {

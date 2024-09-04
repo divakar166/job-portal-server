@@ -3,6 +3,9 @@ const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const connectDB = require('./config/database');
+const { Resend } = require('resend');
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 dotenv.config();
 
@@ -19,7 +22,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use('/api/developers', require('./routes/devRoutes'));
-app.use('/api/company', require('./routes/companyRoutes'));
+app.use('/api/companies', require('./routes/companyRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Connect - Job Portal Server');

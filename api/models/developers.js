@@ -6,8 +6,15 @@ const DeveloperSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  mobile: { type: String, required: true },
-  designation: { type: String, required: true },
+  mobile: { type: String},
+  designation: { type: String},
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+  },
 });
 
 // Pre-save middleware to hash the password before saving it
