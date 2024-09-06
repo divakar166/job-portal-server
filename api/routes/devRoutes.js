@@ -4,6 +4,8 @@ const Developer = require('../models/developers');
 const { generateToken } = require('../utils/token');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const crypto = require('crypto');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { Resend } = require('resend');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -49,6 +51,41 @@ router.post('/register', async (req, res) => {
   }
 });
 
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    let developer = await Developer.findOne({ email });
+    if (!developer) {
+      return res.status(400).json({ msg: "Developer doesn't exist!" });
+    }
+
+    const isMatch = await bcrypt.compare(password, developer.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: 'Invalid credentials' });
+    }
+
+    const payload = {
+      developer: {
+        id: developer.id,
+      },
+    };
+
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server error');
+  }
+});
+
 router.get('/verify/:token', async (req, res) => {
   try {
     const { token } = req.params;
@@ -68,58 +105,8 @@ router.get('/verify/:token', async (req, res) => {
   }
 });
 
-
-
-// Login a developer
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+router.get('/profile', authenticateToken, async (req, res) => {
   try {
-    const developer = await Developer.findOne({ email });
-    if (!developer || !developer.verifyPassword(password)) {
-      return res.status(401).json({ error: 'Invalid email or password' });
-    }
-
-    const token = generateToken(developer._id, 'developer');
-    res.json({ token });
-  } catch (error) {
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
-
-// Fetch all developers
-router.get('/', async (req, res) => {
-  try {
-    const developers = await Developer.find();
-    res.json(developers);
-  } catch (err) {
-    res.status(500).send('Server error');
-  }
-});
-
-// Fetch a developer by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const developer = await Developer.findById(req.params.id);
-
-    if (!developer) {
-      return res.status(404).json({ msg: 'Developer not found' });
-    }
-
-    res.json(developer);
-  } catch (err) {
-    if (err.kind === 'ObjectId') {
-      return res.status(404).json({ msg: 'Developer not found' });
-    }
-    res.status(500).send('Server error');
-  }
-});
-
-router.post('/profile', authenticateToken, async (req, res) => {
-  try {
-    if (req.user.type !== 'developer') {
-      return res.status(403).json({ error: 'Access forbidden' });
-    }
-
     const developer = await Developer.findById(req.user.id);
     if (!developer) {
       return res.status(404).json({ error: 'Developer not found' });
